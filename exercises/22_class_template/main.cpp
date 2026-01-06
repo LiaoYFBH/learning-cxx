@@ -10,6 +10,11 @@ struct Tensor4D {
     Tensor4D(unsigned int const shape_[4], T const *data_) {
         unsigned int size = 1;
         // TODO: 填入正确的 shape 并计算 size
+        for (int i=0;i<4;++i)
+        {
+            shape[i]=shape_[i];
+            size*=shape[i];
+        }
         data = new T[size];
         std::memcpy(data, data_, size * sizeof(T));
     }
@@ -28,6 +33,36 @@ struct Tensor4D {
     // 则 `this` 与 `others` 相加时，3 个形状为 `[1, 2, 1, 4]` 的子张量各自与 `others` 对应项相加。
     Tensor4D &operator+=(Tensor4D const &others) {
         // TODO: 实现单向广播的加法
+        unsigned int others_stride[4];
+        unsigned int current_stride = 1;
+        
+        for (int i = 3; i >= 0; --i) {
+            if (others.shape[i] == 1) {
+                others_stride[i] = 0;
+            } else {
+                others_stride[i] = current_stride;
+            }
+            current_stride *= others.shape[i];
+        }
+
+       
+        unsigned int dst_idx = 0;
+        for (unsigned int n = 0; n < shape[0]; ++n) {
+            for (unsigned int c = 0; c < shape[1]; ++c) {
+                for (unsigned int h = 0; h < shape[2]; ++h) {
+                    for (unsigned int w = 0; w < shape[3]; ++w) {
+                        // 根据当前坐标 (n,c,h,w) 和广播步长计算 others 中的线性索引
+                        unsigned int src_idx = n * others_stride[0] + 
+                                               c * others_stride[1] + 
+                                               h * others_stride[2] + 
+                                               w * others_stride[3];
+                        
+                        data[dst_idx] += others.data[src_idx];
+                        dst_idx++;
+                    }
+                }
+            }
+        }
         return *this;
     }
 };
